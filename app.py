@@ -1,18 +1,11 @@
+import os
 from functools import wraps
 from flask import Flask, redirect, render_template, session, url_for, jsonify, request
 import pymongo
 from dotenv import load_dotenv
 import os 
-from authlib.integrations.flask_client import OAuth
-from datetime import timedelta
-from datetime import datetime            
-from email.mime.multipart import MIMEMultipart            
-from email.mime.text import MIMEText
-import requests
 
-from werkzeug import Client
-
-app = Flask(__name__)  
+app = Flask(__name__)
 app.secret_key = "secret"
 
 load_dotenv()
@@ -40,14 +33,40 @@ google = oauth.register(
     server_metadata_url='https://accounts.google.com/.well-known/openid-configuration'
 ) 
 
-#database
+# Khoi: add third party login
+oauth = OAuth(app)
+# Session config
+app.config['SESSION_COOKIE_NAME'] = 'google-login-session'
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=5)
+
+# oAuth Setup
+oauth = OAuth(app)
+google = oauth.register(
+    name='google',
+    client_id=os.getenv("GOOGLE_CLIENT_ID"),
+    client_secret=os.getenv("GOOGLE_CLIENT_SECRET"),
+    access_token_url='https://accounts.google.com/o/oauth2/token',
+    access_token_params=None,
+    authorize_url='https://accounts.google.com/o/oauth2/auth',
+    authorize_params=None,
+    api_base_url='https://www.googleapis.com/oauth2/v1/',
+    userinfo_endpoint='https://openidconnect.googleapis.com/v1/userinfo',  # This is only needed if using openId to fetch user info
+    client_kwargs={'scope': 'email profile'},
+    server_metadata_url='https://accounts.google.com/.well-known/openid-configuration'
+) 
+
+# database
 client = pymongo.MongoClient(URI)
 db = client.user_login_system
 
 #Francis: OTP
 otp_collection = db.otp_collection
 
-#decorators
+#Francis: OTP
+otp_collection = db.otp_collection
+
+
+# decorators
 def login_required(func):
     @wraps(func)
     def wrap(*args, **kwargs):
@@ -55,7 +74,7 @@ def login_required(func):
             return func(*args, **kwargs)
         else:
             return redirect('/')
-        
+
     return wrap
 #routes 
 from user import routes
@@ -71,32 +90,35 @@ def home():
 
 @app.route('/services/')
 def services():
-    return render_template('service.html') 
+    return render_template('service.html')
 
-@app.route('/payrollcalculator/')
-def payrollcalculator():
-    return render_template('calculateTax.html') 
-
-@app.route('/contact/')
+@app.route('/contact')
 def contact():
-    return render_template('contact.html') 
+    return render_template('contact.html')
 
-@app.route('/gologin/')
-def gologin():
-    return render_template('login.html')   
+@app.route('/homepage')
+def homepage():
+    return render_template('home.html') 
+
+# @app.route('/gologin')
+# def gologin():
+#     return render_template('login.html')  
 
 @app.route('/gosignup/')
 def goSignup():
-    return render_template('signup.html')   
+    return render_template('signup.html')
+
 
 @app.route('/dashboard/')
 @login_required
 def dashboard():
-    return render_template('dashboard.html')   
+    return render_template('dashboard.html')
+
 
 @app.route('/goforgetPass/')
 def goforgetPass():
-    return render_template('forgetpassword.html') 
+    return render_template('forgetpassword.html')
+
 
 @app.route('/goresetPass/')
 def goresetPass():
